@@ -17,6 +17,7 @@ import (
 type WebSockListener struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
+	wsopts    *websocket.AcceptOptions
 
 	acceptCh chan net.Conn
 }
@@ -28,11 +29,12 @@ var (
 
 //NewWebSocketListener constructs a new WebSockListener, the provided context
 //is for the lifetime of the listener.
-func NewWebSocketListener(ctx context.Context) *WebSockListener {
+func NewWebSocketListener(ctx context.Context, wsopts *websocket.AcceptOptions) *WebSockListener {
 	ctx, cancel := context.WithCancel(ctx)
 	wsl := &WebSockListener{
 		ctx:       ctx,
 		ctxCancel: cancel,
+		wsopts:    wsopts,
 		acceptCh:  make(chan net.Conn, 8),
 	}
 	go func() { //Close queued connections
@@ -61,7 +63,7 @@ func (wsl *WebSockListener) ServeHTTP(wtr http.ResponseWriter, req *http.Request
 	default:
 	}
 
-	ws, err := websocket.Accept(wtr, req, nil)
+	ws, err := websocket.Accept(wtr, req, wsl.wsopts)
 	if err != nil {
 		log.Printf("WebSockListener: ERROR: Could not accept websocket from %q; Details: %s", req.RemoteAddr, err)
 	}
